@@ -132,7 +132,7 @@ with st.sidebar:
 
 # --- TÍTULO PRINCIPAL ---
 st.title("PAUIa")
-st.markdown("#### 🚀 TU Tutora Experta en PAU (by Yoel&Fran ©2026") # Usamos markdown para un subtítulo más limpio
+st.markdown("#### 🚀 TU Tutora Experta en PAU <span style='font-size: 16px; color: #666666; font-weight: normal;'>(by Yoel&Fran ©2026)</span>", unsafe_allow_html=True)
 
 # 2. Conexión blindada de la IA
 @st.cache_resource
