@@ -6,6 +6,8 @@ from google.oauth2 import service_account
 from google.cloud import storage 
 from vertexai.generative_models import GenerativeModel, Tool, grounding
 
+nombre_usuario = "Paco" # Esto luego lo podremos sacar de una base de datos
+
 # 1. Configuración de la interfaz
 st.set_page_config(page_title="PAUIa - Tu Tutora PAU", page_icon="👩‍🏫", layout="centered")
 
