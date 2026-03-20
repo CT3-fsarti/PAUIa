@@ -1,6 +1,28 @@
 import streamlit as st
 import vertexai
+import os
+import json
 from vertexai.generative_models import GenerativeModel, Tool, grounding
+
+# --- LÓGICA DE SEGURIDAD (LA LLAVE MAESTRA) ---
+# Escribe aquí el nombre exacto de tu archivo JSON
+nombre_archivo_local = "llave-pauia.json" 
+
+if "google_cloud" in st.secrets:
+    # MODO NUBE (Streamlit Cloud para la demo del lunes)
+    creds_dict = json.loads(st.secrets["google_cloud"]["credentials"])
+    with open("secrets.json", "w") as f:
+        json.dump(creds_dict, f)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "secrets.json"
+else:
+    # MODO LOCAL (Para probar ahora mismo en tu PC)
+    if os.path.exists(nombre_archivo_local):
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = nombre_archivo_local
+    else:
+        st.error(f"❌ No encuentro el archivo de llaves: {nombre_archivo_local}")
+        st.info("Asegúrate de que el JSON está en la misma carpeta que app.py y que el nombre coincide exactamente.")
+        st.stop()
+# ----------------------------------------------
 
 # 1. Configuración de la interfaz limpia
 st.set_page_config(page_title="PAUIa", page_icon="🎓", layout="centered")
@@ -25,7 +47,7 @@ def iniciar_chat():
             )
         )
         
-        # Configuramos la IA sin inventos
+        # Configuramos la IA usando el motor Pro
         instrucciones = """Eres PAUIa, el asistente inteligente experto en preparación de exámenes PAU.
         Tu misión es ayudar a los alumnos a preparar la PAU de forma eficiente y cercana.
         Responde siempre utilizando la información de las herramientas de búsqueda (Data Store).
@@ -45,7 +67,7 @@ def iniciar_chat():
 # 3. Arrancamos el motor
 chat_sesion, error_conexion = iniciar_chat()
 
-# Si hay error, lo mostramos en pantalla
+# Si hay error de conexión a internet o Google, lo mostramos
 if error_conexion:
     st.error("⚠️ Hubo un problema al conectar con Google Cloud:")
     st.code(error_conexion)
