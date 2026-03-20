@@ -4,25 +4,29 @@ import os
 import json
 from vertexai.generative_models import GenerativeModel, Tool, grounding
 
-# --- LÓGICA DE SEGURIDAD (LA LLAVE MAESTRA) ---
-# Escribe aquí el nombre exacto de tu archivo JSON
-nombre_archivo_local = "llave-pauia.json" 
+# --- LÓGICA DE SEGURIDAD BLINDADA (RUTAS ABSOLUTAS) ---
+nombre_archivo_local = "llave-pauia.json" # <--- Tu archivo en el PC
 
 if "google_cloud" in st.secrets:
-    # MODO NUBE (Streamlit Cloud para la demo del lunes)
-    creds_dict = json.loads(st.secrets["google_cloud"]["credentials"])
-    with open("secrets.json", "w") as f:
-        json.dump(creds_dict, f)
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "secrets.json"
-else:
-    # MODO LOCAL (Para probar ahora mismo en tu PC)
-    if os.path.exists(nombre_archivo_local):
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = nombre_archivo_local
-    else:
-        st.error(f"❌ No encuentro el archivo de llaves: {nombre_archivo_local}")
-        st.info("Asegúrate de que el JSON está en la misma carpeta que app.py y que el nombre coincide exactamente.")
+    # MODO NUBE (Streamlit Cloud): Creamos la llave con ruta absoluta
+    ruta_secrets = os.path.abspath("secrets.json")
+    try:
+        creds_dict = json.loads(st.secrets["google_cloud"]["credentials"])
+        with open(ruta_secrets, "w") as f:
+            json.dump(creds_dict, f)
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = ruta_secrets
+    except Exception as e:
+        st.error(f"Error al leer los Secrets de Streamlit: {e}")
         st.stop()
-# ----------------------------------------------
+else:
+    # MODO LOCAL (Tu PC): Buscamos la llave con ruta absoluta
+    ruta_local = os.path.abspath(nombre_archivo_local)
+    if os.path.exists(ruta_local):
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = ruta_local
+    else:
+        st.error(f"❌ No encuentro el archivo de llaves en: {ruta_local}")
+        st.stop()
+# ------------------------------------------------------
 
 # 1. Configuración de la interfaz limpia
 st.set_page_config(page_title="PAUIa", page_icon="🎓", layout="centered")
