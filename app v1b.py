@@ -1,0 +1,105 @@
+import streamlit as st
+import vertexai
+import json
+import os
+from google.oauth2 import service_account  # <--- LA NUEVA HERRAMIENTA CLAVE
+from vertexai.generative_models import GenerativeModel, Tool, grounding
+
+# 1. Configuración de la interfaz limpia
+st.set_page_config(page_title="PAUIa", page_icon="🎓", layout="centered")
+st.title("🎓 PAUIa")
+st.write("Tu asistente experto para la preparación de exámenes PAU.")
+
+# 2. Conexión blindada con Google Cloud
+@st.cache_resource
+def iniciar_chat():
+    try:
+        # PASO A: Obtenemos la llave de forma directa y estricta
+        if "google_cloud" in st.secrets:
+            # MODO NUBE: Lee de la caja fuerte de Streamlit
+            creds_dict = json.loads(st.secrets["google_cloud"]["credentials"])
+            credenciales = service_account.Credentials.from_service_account_info(creds_dict)
+        else:
+            # MODO LOCAL: Lee de tu archivo en el PC
+            archivo_local = "llave-pauia.json" # <--- Asegúrate de que se llama así
+            if not os.path.exists(archivo_local):
+                return None, f"No encuentro el archivo de llaves: {archivo_local}"
+            credenciales = service_account.Credentials.from_service_account_file(archivo_local)
+
+        # PASO B: Inyectamos la llave DIRECTAMENTE en Vertex AI
+        vertexai.init(project="paula-490208", location="us-central1", credentials=credenciales) 
+        
+        # Conectamos tu Datastore (RAG)
+        herramienta_rag = Tool.from_retrieval(
+            retrieval=grounding.Retrieval(
+                source=grounding.VertexAISearch(
+                    datastore="pauia_1773486206667_gcs_store",
+                    project="paula-490208",
+                    location="global"
+                )
+            )
+        )
+        
+         # Configuramos la IA usando el motor Pro con REGLAS ESTRICTAS
+        instrucciones = """
+        Eres PAUIa, el asistente inteligente experto en preparación de exámenes PAU.
+        
+        REGLA DE ORO INQUEBRANTABLE: 
+        TIENES ESTRICTAMENTE PROHIBIDO usar tu conocimiento general, interno o de internet. 
+        DEBES responder ÚNICA y EXCLUSIVAMENTE con la información exacta extraída de los documentos de tu herramienta de búsqueda (Data Store).
+        
+        Si el alumno te pregunta algo que no aparece en tus documentos tu respuesta OBLIGATORIA y literal debe ser: "Actualmente no tengo esa información en mis apuntes, pero envío tu consulta al equipo para que valore incorporarla". No des ninguna explicación adicional ni intentes responder la pregunta.
+        
+        Si encuentras la respuesta en los documentos, menciona de dónde la has sacado.
+
+        """
+        
+        modelo = GenerativeModel(
+            model_name="gemini-2.5-pro", # Mantenemos tu motor Pro intacto
+            tools=[herramienta_rag],
+            system_instruction=instrucciones,
+            generation_config={"temperature": 0.0} # <--- NUEVO: Creatividad al mínimo
+        )
+        
+        return modelo.start_chat(), None
+    except Exception as e:
+        return None, str(e)
+
+# 3. Arrancamos el motor
+chat_sesion, error_conexion = iniciar_chat()
+
+# Si hay error, lo mostramos en pantalla de forma clara
+if error_conexion:
+    st.error("⚠️ Hubo un problema al arrancar PAUIa:")
+    st.code(error_conexion)
+else:
+    # Si todo va bien, mostramos el chat
+    if "mensajes" not in st.session_state:
+        st.session_state.mensajes = []
+
+    for msg in st.session_state.mensajes:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    if prompt := st.chat_input("Pregúntame algo sobre el temario de la PAU..."):
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        st.session_state.mensajes.append({"role": "user", "content": prompt})
+
+        with st.chat_message("assistant"):
+            with st.spinner("Un momento, estoy consultando mis apuntes..."):
+                try:
+                    respuesta = chat_sesion.send_message(prompt)
+                    
+                    # --- EL TRUCO PARA UNIR LAS PIEZAS ---
+                    try:
+                        texto_final = respuesta.text
+                    except Exception:
+                        # Si Google manda la respuesta en varios trozos, los unimos
+                        texto_final = "".join([part.text for part in respuesta.candidates[0].content.parts])
+                    # -------------------------------------
+                    
+                    st.markdown(texto_final)
+                    st.session_state.mensajes.append({"role": "assistant", "content": texto_final})
+                except Exception as e:
+                    st.error(f"Error al generar la respuesta: {e}")
