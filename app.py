@@ -171,7 +171,7 @@ chat_sesion, error_ia = iniciar_chat(comunidad, asignatura, llave_maestra, nombr
 st.title("PAUIa")
 st.markdown(f"#### 🚀 TU Tutora Experta en PAU <span style='font-size: 14px; color: #666666; font-weight: normal;'>(by Yoel&Fran ©2026)</span>", unsafe_allow_html=True)
 
-tab_estudio, tab_gestion = st.tabs(["🙋‍♀️ Estudiar", "📂 Gestionar Documentos"])
+tab_estudio, tab_gestion = st.tabs(["🙋‍♀️ Estudiar", "📂 Tu Biblioteca (carga tus apuntes, exámenes, ...)"])
 
 with tab_estudio:
     if error_ia:
