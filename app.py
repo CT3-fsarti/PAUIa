@@ -82,7 +82,16 @@ else:
             with st.spinner("Consultando los manuales..."):
                 try:
                     respuesta = chat_sesion.send_message(prompt)
-                    st.markdown(respuesta.text)
-                    st.session_state.mensajes.append({"role": "assistant", "content": respuesta.text})
+                    
+                    # --- EL TRUCO PARA UNIR LAS PIEZAS ---
+                    try:
+                        texto_final = respuesta.text
+                    except Exception:
+                        # Si Google manda la respuesta en varios trozos, los unimos
+                        texto_final = "".join([part.text for part in respuesta.candidates[0].content.parts])
+                    # -------------------------------------
+                    
+                    st.markdown(texto_final)
+                    st.session_state.mensajes.append({"role": "assistant", "content": texto_final})
                 except Exception as e:
                     st.error(f"Error al generar la respuesta: {e}")
