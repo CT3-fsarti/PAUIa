@@ -1,52 +1,41 @@
 import streamlit as st
 import vertexai
-import os
 import json
+import os
+from google.oauth2 import service_account  # <--- LA NUEVA HERRAMIENTA CLAVE
 from vertexai.generative_models import GenerativeModel, Tool, grounding
-
-# --- LÓGICA DE SEGURIDAD BLINDADA (RUTAS ABSOLUTAS) ---
-nombre_archivo_local = "llave-pauia.json" # <--- Tu archivo en el PC
-
-if "google_cloud" in st.secrets:
-    # MODO NUBE (Streamlit Cloud): Creamos la llave con ruta absoluta
-    ruta_secrets = os.path.abspath("secrets.json")
-    try:
-        creds_dict = json.loads(st.secrets["google_cloud"]["credentials"])
-        with open(ruta_secrets, "w") as f:
-            json.dump(creds_dict, f)
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = ruta_secrets
-    except Exception as e:
-        st.error(f"Error al leer los Secrets de Streamlit: {e}")
-        st.stop()
-else:
-    # MODO LOCAL (Tu PC): Buscamos la llave con ruta absoluta
-    ruta_local = os.path.abspath(nombre_archivo_local)
-    if os.path.exists(ruta_local):
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = ruta_local
-    else:
-        st.error(f"❌ No encuentro el archivo de llaves en: {ruta_local}")
-        st.stop()
-# ------------------------------------------------------
 
 # 1. Configuración de la interfaz limpia
 st.set_page_config(page_title="PAUIa", page_icon="🎓", layout="centered")
 st.title("🎓 PAUIa")
 st.write("Tu asistente experto para la preparación de exámenes PAU.")
 
-# 2. Conexión segura con Google Cloud
+# 2. Conexión blindada con Google Cloud
 @st.cache_resource
 def iniciar_chat():
     try:
-        # Iniciamos tu proyecto principal
-        vertexai.init(project="paula-490208", location="us-central1") 
+        # PASO A: Obtenemos la llave de forma directa y estricta
+        if "google_cloud" in st.secrets:
+            # MODO NUBE: Lee de la caja fuerte de Streamlit
+            creds_dict = json.loads(st.secrets["google_cloud"]["credentials"])
+            credenciales = service_account.Credentials.from_service_account_info(creds_dict)
+        else:
+            # MODO LOCAL: Lee de tu archivo en el PC
+            archivo_local = "llave-pauia.json" # <--- Asegúrate de que se llama así
+            if not os.path.exists(archivo_local):
+                return None, f"No encuentro el archivo de llaves: {archivo_local}"
+            credenciales = service_account.Credentials.from_service_account_file(archivo_local)
+
+        # PASO B: Inyectamos la llave DIRECTAMENTE en Vertex AI
+        vertexai.init(project="paula-490208", location="us-central1", credentials=credenciales) 
         
         # Conectamos tu Datastore (RAG)
         herramienta_rag = Tool.from_retrieval(
             retrieval=grounding.Retrieval(
                 source=grounding.VertexAISearch(
-                    datastore="pauia_1773486206667_gcs_store", # Tu ID de PDFs
-                    project="paula-490208",                    # Tu Proyecto real
-                    location="global"                          # La región de los PDFs
+                    datastore="pauia_1773486206667_gcs_store",
+                    project="paula-490208",
+                    location="global"
                 )
             )
         )
@@ -55,7 +44,7 @@ def iniciar_chat():
         instrucciones = """Eres PAUIa, el asistente inteligente experto en preparación de exámenes PAU.
         Tu misión es ayudar a los alumnos a preparar la PAU de forma eficiente y cercana.
         Responde siempre utilizando la información de las herramientas de búsqueda (Data Store).
-        Si encuentras la respuesta en un documento, menciona de dónde la has sacado para que el alumno sepa dónde profundizar.
+        Si encuentras la respuesta en un documento, menciona de dónde la has sacado.
         Si la pregunta no puede responderse con los documentos proporcionados, di: "No tengo esa información en mis manuales oficiales"."""
         
         modelo = GenerativeModel(
@@ -71,21 +60,19 @@ def iniciar_chat():
 # 3. Arrancamos el motor
 chat_sesion, error_conexion = iniciar_chat()
 
-# Si hay error de conexión a internet o Google, lo mostramos
+# Si hay error, lo mostramos en pantalla de forma clara
 if error_conexion:
-    st.error("⚠️ Hubo un problema al conectar con Google Cloud:")
+    st.error("⚠️ Hubo un problema al arrancar PAUIa:")
     st.code(error_conexion)
 else:
     # Si todo va bien, mostramos el chat
     if "mensajes" not in st.session_state:
         st.session_state.mensajes = []
 
-    # Pintamos el historial
     for msg in st.session_state.mensajes:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # Caja de texto para hablar con PAUIa
     if prompt := st.chat_input("Pregúntame algo sobre el temario de la PAU..."):
         with st.chat_message("user"):
             st.markdown(prompt)
