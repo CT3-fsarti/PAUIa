@@ -9,23 +9,44 @@ from vertexai.generative_models import GenerativeModel, Tool, grounding
 st.set_page_config(page_title="PAUIa - Tutor", page_icon="🎓", layout="centered")
 
 # --- PANEL LATERAL (SIDEBAR) ---
+# --- PANEL LATERAL (SIDEBAR) ---
 with st.sidebar:
-    # Intentamos cargar el logo (asegúrate de que el archivo se llama exactamente así y está en la misma carpeta)
     try:
         st.image("logo_pauia.png", use_container_width=True)
     except Exception:
-        pass # Si la imagen no está o tiene otro nombre (como .jpg), no pasa nada, la app sigue funcionando
+        pass 
     
-    st.title("🎓 Sobre PAUIa")
-    st.info(
-        "PAUIa es tu asistente inteligente para preparar la selectividad. "
-        "Busca información exclusivamente en los manuales oficiales y exámenes de convocatorias anteriores."
+    st.title("🎓 Configuración")
+    
+    # 1. Menús desplegables
+    comunidad = st.selectbox(
+        "📍 Comunidad Autónoma",
+        ["Madrid", "Andalucía", "Cataluña", "Comunidad Valenciana", "Galicia", "Castilla y León", "Todas"]
     )
+    
+    asignatura = st.selectbox(
+        "📚 Asignatura",
+        ["Matemáticas II", "Matemáticas CCSS", "Física", "Química", "Biología"]
+    )
+    
+    # 2. Control de cambios (Limpiamos el chat si cambian de asignatura o CCAA)
+    if "comunidad_actual" not in st.session_state:
+        st.session_state.comunidad_actual = comunidad
+        st.session_state.asignatura_actual = asignatura
+        
+    if comunidad != st.session_state.comunidad_actual or asignatura != st.session_state.asignatura_actual:
+        st.session_state.comunidad_actual = comunidad
+        st.session_state.asignatura_actual = asignatura
+        st.session_state.mensajes = [] # Borramos el historial viejo
+        st.rerun() # Recargamos la app
+
     st.markdown("---")
-    # Botón para limpiar el chat sin tener que recargar la web entera
+    st.info("PAUIa busca información exclusivamente en los manuales oficiales de la asignatura seleccionada.")
+    
     if st.button("🗑️ Limpiar conversación"):
         st.session_state.mensajes = []
         st.rerun()
+
 # -------------------------------
 
 # --- TÍTULO PRINCIPAL ---
