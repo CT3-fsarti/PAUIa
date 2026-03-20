@@ -50,6 +50,22 @@ estilo_css = """
         border-color: #E2E8F0;
         box-shadow: 0 2px 5px rgba(0,0,0,0.02);
     }
+
+    /* Estilo para el avatar de usuario circular */
+    .user-avatar {
+        width: 50px;
+        height: 50px;
+        background-color: #1E3A8A;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 20px;
+        margin-bottom: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
 </style>
 """
 st.markdown(estilo_css, unsafe_allow_html=True)
@@ -95,6 +111,25 @@ lista_dinamica_asignaturas = obtener_asignaturas_del_bucket(llave_maestra)
 
 # --- PANEL LATERAL (SIDEBAR) ---
 with st.sidebar:
+
+    # --- SECCIÓN DE PERFIL DE USUARIO ---
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        # Aquí simulamos el icono circular con HTML
+        st.markdown('<div class="user-avatar">P</div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown("**Usuario:** Paco")
+        st.caption("Plan Premium ⭐")
+    
+    st.markdown("---")
+    
+    # El resto de tu código del sidebar (Logo, selectbox, etc.) sigue igual...
+    try:
+        st.image("logo_pauia.png", use_container_width=True)
+    except Exception:
+        pass
+
+
     try:
         st.image("logo_pauia.png", use_container_width=True)
     except Exception:
@@ -152,14 +187,20 @@ def iniciar_chat(comunidad_elegida, asignatura_elegida, _credenciales):
         
         instrucciones = f"""Eres PAUIa (pronunciado como el nombre Paula), una tutora virtual joven, cercana, empática y muy inteligente.
         Tu misión es ayudar a estudiantes de Bachillerato (16-18 años) a preparar la PAU de {asignatura_elegida} en {comunidad_elegida}.
-        Háblales de tú, con un tono motivador, claro y usando emojis moderadamente. Quítales el estrés del examen.
+
+        ESTILO
+            1. Háblales de tú, con un tono motivador, claro y usando emojis moderadamente.
+            2. Quítales el estrés del examen.
+            3. Usa su nombre de vez en cuando para que sienta que la tutoría es 1 a 1. Por ejemplo: '¡Muy buena pregunta, {nombre_usuario}! Vamos a resolverlo...'
+            4. Si encuentras la respuesta, explícala paso a paso de forma didáctica y menciona de qué documento la has sacado.
         
-        REGLA DE ORO INQUEBRANTABLE: 
-        DEBES responder ÚNICA y EXCLUSIVAMENTE con la información exacta extraída de los documentos de tu herramienta de búsqueda.
+        REGLAS DE ORO INQUEBRANTABLES: 
+            1. DEBES responder ÚNICA y EXCLUSIVAMENTE con la información exacta extraída de los documentos de tu herramienta de búsqueda.
+            2. Si el alumno te pregunta algo que no aparece en tus documentos, responde de forma amable pero firme: "¡Ups! 😅 No tengo esa información en mis apuntes de {asignatura_elegida}. ¡Intenta preguntarme sobre otra parte del temario!"
         
-        Si el alumno te pregunta algo que no aparece en tus documentos, responde de forma amable pero firme: "¡Ups! 😅 No tengo esa información en mis apuntes de {asignatura_elegida}. ¡Intenta preguntarme sobre otra parte del temario!"
         
-        Si encuentras la respuesta, explícala paso a paso de forma didáctica y menciona de qué documento la has sacado."""
+
+     """
         
         modelo = GenerativeModel(
             model_name="gemini-2.5-pro", 
