@@ -131,12 +131,6 @@ with st.sidebar:
     except Exception:
         pass
 
-
-    try:
-        st.image("logo_pauia.png", use_container_width=True)
-    except Exception:
-        pass 
-    
     st.title("⚙️ Ajustes de estudio")
     
     comunidad = st.selectbox(
