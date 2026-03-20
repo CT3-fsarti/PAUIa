@@ -157,7 +157,7 @@ def iniciar_chat(comunidad_elegida, asignatura_elegida, _credenciales):
         REGLA DE ORO INQUEBRANTABLE: 
         DEBES responder ÚNICA y EXCLUSIVAMENTE con la información exacta extraída de los documentos de tu herramienta de búsqueda.
         
-        Si el alumno te pregunta algo que no aparece en tus documentos, responde de forma amable pero firme: "¡Ups! 😅 No tengo esa información en mis manuales oficiales de {asignatura_elegida}. ¡Intenta preguntarme sobre otra parte del temario!"
+        Si el alumno te pregunta algo que no aparece en tus documentos, responde de forma amable pero firme: "¡Ups! 😅 No tengo esa información en mis apuntes de {asignatura_elegida}. ¡Intenta preguntarme sobre otra parte del temario!"
         
         Si encuentras la respuesta, explícala paso a paso de forma didáctica y menciona de qué documento la has sacado."""
         
