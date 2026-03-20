@@ -3,16 +3,61 @@ import vertexai
 import json
 import os
 from google.oauth2 import service_account
-from google.cloud import storage # <--- NUEVA LIBRERÍA PARA LEER EL BUCKET
+from google.cloud import storage 
 from vertexai.generative_models import GenerativeModel, Tool, grounding
 
 # 1. Configuración de la interfaz
-st.set_page_config(page_title="PAUIa - Tutor", page_icon="🎓", layout="centered")
+st.set_page_config(page_title="PAUIa - Tu Tutora PAU", page_icon="👩‍🏫", layout="centered")
+
+# --- MAGIA CSS: ESTILO MODERNO Y JOVEN ---
+estilo_css = """
+<style>
+    /* Ocultar el menú por defecto y el pie de página de Streamlit para que parezca una App real */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Fondo de la app: Un gris/azulado súper claro, no blanco nuclear (cansa menos la vista) */
+    .stApp {
+        background-color: #F8FAFC;
+    }
+    
+    /* Títulos principales con el Azul oscuro de tu logo */
+    h1, h2, h3 {
+        color: #1E3A8A !important;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* Estilizar el botón de "Limpiar conversación" con el color dorado/ámbar del logo */
+    .stButton>button {
+        border-radius: 20px !important;
+        background-color: #F59E0B !important;
+        color: white !important;
+        border: none !important;
+        font-weight: bold !important;
+        transition: all 0.3s ease;
+        width: 100%;
+    }
+    .stButton>button:hover {
+        background-color: #D97706 !important;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3) !important;
+        transform: translateY(-2px);
+    }
+
+    /* Sombras suaves en los menús desplegables */
+    div[data-baseweb="select"] > div {
+        border-radius: 10px;
+        border-color: #E2E8F0;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    }
+</style>
+"""
+st.markdown(estilo_css, unsafe_allow_html=True)
+# ----------------------------------------
 
 # --- SISTEMA CENTRAL DE CREDENCIALES ---
 @st.cache_resource
 def cargar_credenciales():
-    """Carga la llave maestra una sola vez para que la usen todos los servicios"""
     if "google_cloud" in st.secrets:
         creds_dict = json.loads(st.secrets["google_cloud"]["credentials"])
         return service_account.Credentials.from_service_account_info(creds_dict)
@@ -23,39 +68,30 @@ def cargar_credenciales():
         st.error("❌ No encuentro el archivo de llaves local.")
         st.stop()
 
-# Guardamos la llave en una variable para usarla ahora
 llave_maestra = cargar_credenciales()
 
 # --- LECTOR DINÁMICO DEL BUCKET ---
-@st.cache_data(ttl=3600) # Guarda la lista en memoria 1 hora para que la web vaya rapidísima
+@st.cache_data(ttl=3600)
 def obtener_asignaturas_del_bucket(_credenciales):
     try:
-        # Nos conectamos al Storage usando tu llave
         cliente_storage = storage.Client(project="paula-490208", credentials=_credenciales)
-        bucket = cliente_storage.bucket("pau_ia") # Buscamos en tu bucket real
+        bucket = cliente_storage.bucket("pau_ia")
         blobs = bucket.list_blobs()
         
         asignaturas = set()
         for blob in blobs:
-            # Ignoramos si es una carpeta vacía, solo queremos archivos
             if not blob.name.endswith('/'):
                 partes = blob.name.split('/')
-                # Si el archivo está dentro de una carpeta (ej: 01_Libros/Matematicas_II/apuntes.pdf)
                 if len(partes) > 1:
-                    # Cogemos la carpeta que contiene el archivo (la penúltima parte de la ruta)
                     nombre_carpeta = partes[-2] 
-                    # Lo ponemos bonito (quitamos guiones bajos)
                     nombre_limpio = nombre_carpeta.replace("_", " ")
                     asignaturas.add(nombre_limpio)
                     
-        # Devolvemos la lista ordenada alfabéticamente
         return sorted(list(asignaturas)) if asignaturas else ["No se encontraron carpetas"]
     except Exception as e:
         return [f"Error leyendo el bucket: {e}"]
 
-# Obtenemos la lista real de tu Google Cloud
 lista_dinamica_asignaturas = obtener_asignaturas_del_bucket(llave_maestra)
-
 
 # --- PANEL LATERAL (SIDEBAR) ---
 with st.sidebar:
@@ -64,21 +100,18 @@ with st.sidebar:
     except Exception:
         pass 
     
-    st.title("🎓 Configuración")
+    st.title("⚙️ Ajustes de estudio")
     
-    # 1. Menús desplegables
     comunidad = st.selectbox(
-        "📍 Comunidad Autónoma",
+        "📍 ¿Dónde te examinas?",
         ["Madrid", "Andalucía", "Cataluña", "Comunidad Valenciana", "Galicia", "Castilla y León", "Todas"]
     )
     
-    # ¡AQUÍ ESTÁ LA MAGIA! Le pasamos la lista que hemos leído de tu bucket
     asignatura = st.selectbox(
-        "📚 Asignatura",
+        "📚 ¿Qué repasamos hoy?",
         lista_dinamica_asignaturas
     )
     
-    # 2. Control de cambios para limpiar el chat si cambian de tema
     if "comunidad_actual" not in st.session_state:
         st.session_state.comunidad_actual = comunidad
         st.session_state.asignatura_actual = asignatura
@@ -90,22 +123,21 @@ with st.sidebar:
         st.rerun() 
 
     st.markdown("---")
-    st.info("PAUIa busca información exclusivamente en los manuales oficiales de la asignatura seleccionada.")
+    st.caption("Solo uso apuntes y exámenes oficiales. ¡Cero inventos! 😉")
     
-    if st.button("🗑️ Limpiar conversación"):
+    if st.button("✨ Limpiar y empezar de cero"):
         st.session_state.mensajes = []
         st.rerun()
 # -------------------------------
 
 # --- TÍTULO PRINCIPAL ---
-st.title("🎓 PAUIa")
-st.caption("🚀 TU Tutor Experto en PAU | Potenciado por Gemini 2.5 Pro")
+st.title("PAUIa")
+st.markdown("#### 🚀 TU Tutora Experta en PAU") # Usamos markdown para un subtítulo más limpio
 
 # 2. Conexión blindada de la IA
 @st.cache_resource
 def iniciar_chat(comunidad_elegida, asignatura_elegida, _credenciales): 
     try:
-        # Iniciamos la IA usando la misma llave maestra
         vertexai.init(project="paula-490208", location="us-central1", credentials=_credenciales) 
         
         herramienta_rag = Tool.from_retrieval(
@@ -118,16 +150,16 @@ def iniciar_chat(comunidad_elegida, asignatura_elegida, _credenciales):
             )
         )
         
-        # Instrucciones dinámicas con la asignatura leída del bucket
-        instrucciones = f"""Eres PAUIa, el asistente inteligente experto en preparación de exámenes PAU.
-        Tu misión es ayudar a los alumnos a preparar la asignatura de {asignatura_elegida} para la Comunidad Autónoma de {comunidad_elegida}.
+        instrucciones = f"""Eres PAUIa (pronunciado como el nombre Paula), una tutora virtual joven, cercana, empática y muy inteligente.
+        Tu misión es ayudar a estudiantes de Bachillerato (16-18 años) a preparar la PAU de {asignatura_elegida} en {comunidad_elegida}.
+        Háblales de tú, con un tono motivador, claro y usando emojis moderadamente. Quítales el estrés del examen.
         
         REGLA DE ORO INQUEBRANTABLE: 
-        TIENES ESTRICTAMENTE PROHIBIDO usar tu conocimiento general, interno o de internet. 
-        DEBES responder ÚNICA y EXCLUSIVAMENTE con la información exacta extraída de los documentos de tu herramienta de búsqueda (Data Store).
+        DEBES responder ÚNICA y EXCLUSIVAMENTE con la información exacta extraída de los documentos de tu herramienta de búsqueda.
         
-        Si el alumno te pregunta algo que no aparece en tus documentos, tu respuesta OBLIGATORIA y literal debe ser: "No tengo esa información en mis manuales oficiales." No des ninguna explicación adicional.
-        Si encuentras la respuesta en los documentos, menciona de dónde la has sacado."""
+        Si el alumno te pregunta algo que no aparece en tus documentos, responde de forma amable pero firme: "¡Ups! 😅 No tengo esa información en mis manuales oficiales de {asignatura_elegida}. ¡Intenta preguntarme sobre otra parte del temario!"
+        
+        Si encuentras la respuesta, explícala paso a paso de forma didáctica y menciona de qué documento la has sacado."""
         
         modelo = GenerativeModel(
             model_name="gemini-2.5-pro", 
@@ -144,24 +176,31 @@ def iniciar_chat(comunidad_elegida, asignatura_elegida, _credenciales):
 chat_sesion, error_conexion = iniciar_chat(comunidad, asignatura, llave_maestra)
 
 if error_conexion:
-    st.error("⚠️ Hubo un problema al arrancar PAUIa:")
+    st.error("⚠️ Ups, problemas técnicos al conectar con el servidor:")
     st.code(error_conexion)
 else:
+    # --- MENSAJE DE BIENVENIDA EMPÁTICO ---
     if "mensajes" not in st.session_state or len(st.session_state.mensajes) == 0:
-        st.session_state.mensajes = [{"role": "assistant", "content": "¡Hola! Soy PAUIa. ¿Con qué parte del temario o examen de la PAU te ayudo hoy?"}]
+        st.session_state.mensajes = [{
+            "role": "assistant", 
+            "content": f"¡Hola! Soy PAUIa 🙋‍♀️. Estoy aquí para echarte una mano y que la PAU te parezca un paseo. \n\nHe cargado mis apuntes de **{asignatura}**. Dime, ¿qué dudas tienes hoy? ¡Vamos a por ese 10! 🚀"
+        }]
 
+    # --- HISTORIAL DE CHAT CON AVATARES NUEVOS ---
     for msg in st.session_state.mensajes:
-        icono = "🧑‍🎓" if msg["role"] == "user" else "🤖"
+        # El alumno es un emoji cool, PAUIa es la tutora levantando la mano
+        icono = "✌️" if msg["role"] == "user" else "🙋‍♀️"
         with st.chat_message(msg["role"], avatar=icono):
             st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Escribe aquí tu pregunta..."):
-        with st.chat_message("user", avatar="🧑‍🎓"):
+    # --- CAJA DE TEXTO PRINCIPAL ---
+    if prompt := st.chat_input("Escribe tu duda aquí (ej. ¿Cómo se calcula el rango?)..."):
+        with st.chat_message("user", avatar="✌️"):
             st.markdown(prompt)
         st.session_state.mensajes.append({"role": "user", "content": prompt})
 
-        with st.chat_message("assistant", avatar="🤖"):
-            with st.spinner("Buscando en los apuntes..."):
+        with st.chat_message("assistant", avatar="🙋‍♀️"):
+            with st.spinner("Revisando los apuntes... 📖"):
                 try:
                     respuesta = chat_sesion.send_message(prompt)
                     try:
@@ -172,4 +211,4 @@ else:
                     st.markdown(texto_final)
                     st.session_state.mensajes.append({"role": "assistant", "content": texto_final})
                 except Exception as e:
-                    st.error(f"Error al generar la respuesta: {e}")
+                    st.error(f"¡Vaya! Me he atascado buscando la respuesta: {e}")
