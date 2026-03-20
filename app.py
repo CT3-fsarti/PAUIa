@@ -48,16 +48,17 @@ def iniciar_chat():
         TIENES ESTRICTAMENTE PROHIBIDO usar tu conocimiento general, interno o de internet. 
         DEBES responder ÚNICA y EXCLUSIVAMENTE con la información exacta extraída de los documentos de tu herramienta de búsqueda (Data Store).
         
-        Si el alumno te pregunta algo que no aparece en tus documentos tu respuesta OBLIGATORIA y literal debe ser: "No tengo esa información en mis apuntes". No des ninguna explicación adicional ni intentes responder la pregunta.
+        Si el alumno te pregunta algo que no aparece en tus documentos tu respuesta OBLIGATORIA y literal debe ser: "Actualmente no tengo esa información en mis apuntes, pero envío tu consulta al equipo para que valore incorporarla". No des ninguna explicación adicional ni intentes responder la pregunta.
         
         Si encuentras la respuesta en los documentos, menciona de dónde la has sacado.
 
         """
         
         modelo = GenerativeModel(
-            model_name="gemini-2.5-pro", 
+            model_name="gemini-2.5-pro", # Mantenemos tu motor Pro intacto
             tools=[herramienta_rag],
-            system_instruction=instrucciones
+            system_instruction=instrucciones,
+            generation_config={"temperature": 0.0} # <--- NUEVO: Creatividad al mínimo
         )
         
         return modelo.start_chat(), None
@@ -86,7 +87,7 @@ else:
         st.session_state.mensajes.append({"role": "user", "content": prompt})
 
         with st.chat_message("assistant"):
-            with st.spinner("Consultando los manuales..."):
+            with st.spinner("Un momento, estoy consultando mis apuntes..."):
                 try:
                     respuesta = chat_sesion.send_message(prompt)
                     
